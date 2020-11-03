@@ -1,6 +1,6 @@
 rm(list = ls())
 setwd('/Users/dawnstaana/Documents/NUS/Year 4/Sem 1/EC4308/Project/Dataset final')
-install.packages()
+#install packages as necessary
 library(readr)
 library(dplyr)
 library(readxl)
@@ -16,7 +16,10 @@ MSE <- function(pred, truth){ #start and end body of the function by { } - same 
   return(mean((truth - pred)^2)) #end function with a return(output) statement. Here we can go straight to return because the object of interest is a simple function of inputs
 }
 
-#name is string, lst is list of dataframe
+# lst is a list of dataframe
+# ff is a vector of countries
+# name = name of measure (i.e bci,cci) 
+# name is a string that can be concatenated to country in ff
 ci_clean = function(lst,ff,name){
   
   for (i in ff){
@@ -89,6 +92,9 @@ for (i in 1:length(cpi$CPIAUCSL)){
 }
 
 cpi$cpipctchg = cpipctchg[-length(cpipctchg)]
+# df is a dataframe
+# col is is the column to apply the lags
+# name = name of index or stock
 
 pct = function(df,col,name){
   colnames(df)[1] = 'Date'
