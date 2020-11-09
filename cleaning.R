@@ -12,6 +12,7 @@ library(Hmisc)
 library(randomForest)
 library(hdm)
 library(glmnet)
+
 MSE <- function(pred, truth){ #start and end body of the function by { } - same as a loop 
   return(mean((truth - pred)^2)) #end function with a return(output) statement. Here we can go straight to return because the object of interest is a simple function of inputs
 }
@@ -66,36 +67,6 @@ for (i in ff){
 
 View(final)
 
-ffr = read.csv('Monthly FFR (Avg of Daily).csv')
-colnames(ffr)[1] = 'Date'
-colnames(ffr)[2] = 'ffr'
-ffr$Date = as.yearmon(ffr$Date)
-final = inner_join(final,ffr,by='Date')
-
-vix = read.csv('VIX ave.csv')
-vix%>%tail()
-# View(vix)
-colnames(vix)[1] = 'Date'
-colnames(vix)[2] = 'vix'
-vix$Date = as.yearmon(vix$Date)
-final = inner_join(final,vix,by='Date')
-
-#### End of absolute values variables ####
-
-cpi = read.csv('CPI (adjusted).csv')
-head(cpi)
-pct("cpipctchg",cpi,"CPIAUCSL")
-cpipctchg = c(NA)
-for (i in 1:length(cpi$CPIAUCSL)){
-  result = (cpi$CPIAUCSL[i+1]-cpi$CPIAUCS[i])/cpi$CPIAUCS[i]
-  cpipctchg = c(cpipctchg,result)
-}
-
-cpi$cpipctchg = cpipctchg[-length(cpipctchg)]
-# df is a dataframe
-# col is is the column to apply the lags
-# name = name of index or stock
-
 pct = function(df,col,name){
   colnames(df)[1] = 'Date'
   colnames(df)[2] = name
@@ -107,6 +78,32 @@ pct = function(df,col,name){
   }
   return(df)
 }
+
+ffr = read.csv('Monthly FFR (Avg of Daily).csv')
+ffr = pct(ffr,'ffr','ffr')
+final = inner_join(final,ffr,by='Date')
+
+vix = read.csv('VIX ave.csv')
+vix%>%tail()
+# View(vix)
+vix = pct(vix,'vix','vix')
+final = inner_join(final,vix,by='Date')
+
+#### End of absolute values variables ####
+
+cpi = read.csv('CPI (adjusted).csv')
+head(cpi)
+cpipctchg = c(NA)
+for (i in 1:length(cpi$CPIAUCSL)){
+  result = (cpi$CPIAUCSL[i+1]-cpi$CPIAUCS[i])/cpi$CPIAUCS[i]
+  cpipctchg = c(cpipctchg,result)
+}
+
+cpi$cpipctchg = cpipctchg[-length(cpipctchg)]
+# df is a dataframe
+# col is is the column to apply the lags
+# name = name of index or stock
+
 
 cpi = pct(cpi,'cpipctchg','cpi')
 
@@ -184,6 +181,11 @@ for (i in 1:length(nasdaq$Close)){
 nasdaq$nasdaqpctchg = nasdaqpctchg[-length(nasdaqpctchg)]
 
 nasdaq = pct(nasdaq,'nasdaqpctchg','nasdaq')
-colnames(nasdaq)[3] = 'nasdaq_vol'
+colnames(nasdaq)[3] = 'nasdaqvol'
 
 final = inner_join(final,nasdaq,by='Date')
+
+colnames(final)[which(colnames(final)=='G-7bci')] = 'g7bci'
+colnames(final)[which(colnames(final)=='G-7cci')] = 'g7cci'
+
+# write.csv(final,'/Users/dawnstaana/Documents/NUS/Year 4/Sem 1/EC4308/Project/Dataset final/final.csv')
