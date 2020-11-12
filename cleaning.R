@@ -21,6 +21,7 @@ MSE <- function(pred, truth){ #start and end body of the function by { } - same 
 # ff is a vector of countries
 # name = name of measure (i.e bci,cci) 
 # name is a string that can be concatenated to country in ff
+# function to clean dataset
 ci_clean = function(lst,ff,name){
   
   for (i in ff){
@@ -37,7 +38,7 @@ ci_clean = function(lst,ff,name){
   return(lst)
 }
 bci = read.csv('BCI.csv')
-ff = c("EA19",'G-7','OECD','OECDE','CHN','GBR','JPN','RUS','USA','DEU','FRA')
+ff = c("EA19",'G-7','OECD','OECDE','CHN','GBR','JPN','RUS','USA','DEU','FRA') #vector of countries/group of countries
 resbci = list()
 for (i in ff){
   resbci[[i]] = bci[bci$LOCATION==i,]
@@ -45,10 +46,10 @@ for (i in ff){
 
 resbci = ci_clean(resbci,ff,'bci')
 
-final = resbci$EA19
+final = resbci$EA19 #final data frame with column EA19bci
 
 for (i in 2:length(resbci)){
-  final = inner_join(final,resbci[[i]],by='Date')
+  final = inner_join(final,resbci[[i]],by='Date') #join the rest of bci
 }
 
 cci = read.csv('CCI.csv')
@@ -67,6 +68,10 @@ for (i in ff){
 
 View(final)
 
+# Function to create 12 lags
+# df is a dataframe
+# col is the column nage to perform lags on
+# name is what the name of the new lag variables (i.e. vix1 vix2 etc)
 pct = function(df,col,name){
   colnames(df)[1] = 'Date'
   colnames(df)[2] = name
@@ -80,30 +85,26 @@ pct = function(df,col,name){
 }
 
 ffr = read.csv('Monthly FFR (Avg of Daily).csv')
-ffr = pct(ffr,'ffr','ffr')
-final = inner_join(final,ffr,by='Date')
+ffr = pct(ffr,'ffr','ffr') 
+final = inner_join(final,ffr,by='Date') #join the ffr with final dataframe by Date
 
 vix = read.csv('VIX ave.csv')
 vix%>%tail()
 # View(vix)
-vix = pct(vix,'vix','vix')
+vix = pct(vix,'vix','vix') #create lags for vix
 final = inner_join(final,vix,by='Date')
 
 #### End of absolute values variables ####
 
 cpi = read.csv('CPI (adjusted).csv')
 head(cpi)
-cpipctchg = c(NA)
+cpipctchg = c(NA) #calculate pct change for cpi
 for (i in 1:length(cpi$CPIAUCSL)){
   result = (cpi$CPIAUCSL[i+1]-cpi$CPIAUCS[i])/cpi$CPIAUCS[i]
   cpipctchg = c(cpipctchg,result)
 }
 
-cpi$cpipctchg = cpipctchg[-length(cpipctchg)]
-# df is a dataframe
-# col is is the column to apply the lags
-# name = name of index or stock
-
+cpi$cpipctchg = cpipctchg[-length(cpipctchg)] #append cpipctchg in cpi dataframe
 
 cpi = pct(cpi,'cpipctchg','cpi')
 
@@ -125,22 +126,22 @@ final = inner_join(final,ppi,by='Date')
 ### stocks datasets ###
 dji = read.csv('DJI 1985 to 2020.csv')
 dji %>% tail()
-dji = dji[,c('Date','Close')]
-djipctchg = c(NA)
+dji = dji[,c('Date','Close')] #keep only Date and Close columns
+djipctchg = c(NA) #create pct chg vector
 for (i in 1:length(dji$Close)){
   result = (dji$Close[i+1]-dji$Close[i])/dji$Close[i]
   djipctchg = c(djipctchg,result)
 }
-dji$djipctchg = djipctchg[-length(djipctchg)]
+dji$djipctchg = djipctchg[-length(djipctchg)] #append pctchg vector of dji in dji dataframe
 
-dji = pct(dji,'djipctchg','dji')
+dji = pct(dji,'djipctchg','dji') #create lags
 
-final = inner_join(final,dji,by='Date')
+final = inner_join(final,dji,by='Date') #join dji by date
 
 ftse = read.csv('FTSE 95 to 2020.csv')
 ftse %>% tail()
-ftse = ftse[,c('Date','Close')]
-ftsepctchg = c(NA)
+ftse = ftse[,c('Date','Close')] #keep only Date and Close columns
+ftsepctchg = c(NA) #create ftsepctchg
 for (i in 1:length(ftse$Close)){
   result = (ftse$Close[i+1]-ftse$Close[i])/ftse$Close[i]
   ftsepctchg = c(ftsepctchg,result)
@@ -179,13 +180,26 @@ for (i in 1:length(nasdaq$Close)){
 }
 
 nasdaq$nasdaqpctchg = nasdaqpctchg[-length(nasdaqpctchg)]
+View(nasdaq)
 
-nasdaq = pct(nasdaq,'nasdaqpctchg','nasdaq')
+expmean = c(NA) #create expanding mean aking to goyach and welch model
+for (i in 2:nrow(nasdaq)){
+  result = mean(nasdaq$nasdaqpctchg[2:i])
+  expmean = c(expmean,result)
+}
+nasdaq$Date = as.yearmon(nasdaq$Date) #change Date to yearmon so can be joined w
+nasdf = data.frame(Date = nasdaq$Date,expmean) #Goyal and Welch implmentation
+nasdf = inner_join(nasdf,final,by='Date') #Can join it by date that is used in final dataset
+nasdf = subset(nasdf,select = c(Date,expmean)) #just keep Date and expmean
+View(nasdf)
+
+nasdaq = pct(nasdaq,'nasdaqpctchg','nasdaq') #create lags for nasdaqpctchg
 colnames(nasdaq)[3] = 'nasdaqvol'
 
 final = inner_join(final,nasdaq,by='Date')
 
-colnames(final)[which(colnames(final)=='G-7bci')] = 'g7bci'
-colnames(final)[which(colnames(final)=='G-7cci')] = 'g7cci'
+colnames(final)[which(colnames(final)=='G-7bci')] = 'g7bci' #change to remove '-' in g-7bci
+colnames(final)[which(colnames(final)=='G-7cci')] = 'g7cci' #change to remove '-' in g-7cci
 
 # write.csv(final,'/Users/dawnstaana/Documents/NUS/Year 4/Sem 1/EC4308/Project/Dataset final/final.csv')
+# write.csv(nasdf,'/Users/dawnstaana/Documents/NUS/Year 4/Sem 1/EC4308/Project/Dataset final/expanding mean.csv')
