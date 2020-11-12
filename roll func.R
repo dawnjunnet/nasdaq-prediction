@@ -1,3 +1,10 @@
+######################################################
+#rollpred.rf is a function that return the prediction# 
+#for random forest that conducts 1 Month prediction  #
+######################################################
+#wind: is the window length (i.e. 25 window 50 window etc)
+#df: is the dataframe to conduct analysis
+
 rollpred.rf = function(wind,df){
   test = df[(wind+1):nrow(df),]
   len = nrow(df) - wind
@@ -9,10 +16,18 @@ rollpred.rf = function(wind,df){
                       data = train,ntree=5000,maxnodes = 10,mtry=(length(colnames(final))-9)/3)
     result = predict(rf,newdata = test[i,])
     preds = c(preds,result)
-    print(paste('Iter',i))
+    print(paste('Iter',i,result))
   }
   return(preds)
 }
+
+#####################################################
+#hpred.rf is a function that return the prediction  # 
+#for random forest that conducts h Months prediction#
+#####################################################
+#wind: is the window length (i.e. 25 window 50 window etc)
+#df: is the dataframe to conduct analysis
+#h: step of prediction (i.e. Predict 3 Months, 6 Months etc)
 
 hpred.rf = function(wind,df,h){
   test = df[(wind+h):nrow(df),]
@@ -30,6 +45,16 @@ hpred.rf = function(wind,df,h){
   return(preds)
 }
 
+#################################################################
+#msecalc is a function that returns a dataframe with the        # 
+#square error for each prediction and corresponding actual value#
+#################################################################
+#name: name of the corresponding dataframe to be produced
+#wind: is the window length (i.e. 25 window 50 window etc)
+#df: is the dataframe to conduct analysis
+#h: step of prediction (i.e. Predict 3 Months, 6 Months etc)
+#res: is the resulted prediction for each model
+
 msecalc = function(name,wind,h,res){
   
   name = data.frame(Date = final$Date[(wind+h):nrow(final)],pred = res,val = y[(wind+h):nrow(final)])
@@ -41,6 +66,26 @@ msecalc = function(name,wind,h,res){
   name = cbind(name,square_error = mse)
   return(name)
 }
+
+########################################################
+#hanndf is a function that returns a dataframe with the# 
+#actual result and corresponding ann prediction results#
+########################################################
+#pred: is the resulted prediction for ann model
+#wind: is the window length (i.e. 25 window 50 window etc)
+#h: step of prediction (i.e. Predict 3 Months, 6 Months etc)
+
+hanndf = function(pred,wind,h){
+  df = cbind(Date = final$Date[(wind+h):nrow(final)],val = y[(wind+h):nrow(final)],pred)
+  return(df)
+}
+
+###################################################
+#ann is a function that returns a dataframe with  # 
+#the predicted ann results using different lambdas#
+###################################################
+#winds: is the window length (i.e. 25 window 50 window etc)
+#df: is the dataframe to conduct analysis
 
 ann = function(winds,df){
   
@@ -68,7 +113,7 @@ ann = function(winds,df){
 
     for (j in 1:length(dec)){
       nn=nnet(nasdaqpctchg~.-cpi-ppi-dji-ftse-snp-nasdaq-nasdaqvol, data=train, size=10,  
-              maxit=1000, decay=dec[j], linout = TRUE, trace=FALSE,MaxNWts=1041)
+              maxit=1000, decay=dec[j], linout = TRUE, trace=FALSE,MaxNWts=1271)
       yhat = predict(nn, test)*(maxs[k[1]]-mins[k])+mins[k[1]]
       prednn[i,j] = yhat[1]
       print(yhat)
@@ -77,6 +122,16 @@ ann = function(winds,df){
   } 
   return(prednn)
 }
+
+################################################################
+#hann is a function that returns a dataframe with the predicted# 
+#ann results using different lambdas for h-Month prediction    #
+################################################################
+#winds: is the window length (i.e. 25 window 50 window etc)
+#h: step of prediction (i.e. Predict 3 Months, 6 Months etc)
+#df: is the dataframe to conduct analysis
+###NB: MaxNWts could produce an error and the number given in the error 
+###must be changed accordingly
 
 hann = function(winds,df,h){
   
@@ -102,7 +157,7 @@ hann = function(winds,df,h){
     
     for (j in 1:length(dec)){
       nn=nnet(nasdaqpctchg~.-cpi-ppi-dji-ftse-snp-nasdaq-nasdaqvol, data=train, size=10,
-              maxit=1000, decay=dec[j], linout = TRUE, trace=FALSE,MaxNWts=1041)
+              maxit=1000, decay=dec[j], linout = TRUE, trace=FALSE,MaxNWts=1271)
       yhat = predict(nn, test)*(maxs[k[1]]-mins[k])+mins[k[1]]
       prednn[i,j] = yhat[1]
       print(yhat)
@@ -112,6 +167,12 @@ hann = function(winds,df,h){
   return(prednn)
 }
 
+#####################################################
+#rollrlasso is a function that returns a vector with# 
+#the predicted rlasso results for 1 Month prediction#
+#####################################################
+#wind: is the window length (i.e. 25 window 50 window etc)
+#df: is the dataframe to conduct analysis
 rollrlasso = function(wind,df){
   predslasso = c()
   test = df[(wind+1):nrow(df),]
@@ -132,6 +193,13 @@ rollrlasso = function(wind,df){
   return(predslasso)
 }
 
+######################################################
+#hrlasso is a function that returns a vector with the# 
+#predicted rlasso results for h Month prediction     #
+######################################################
+#wind: is the window length (i.e. 25 window 50 window etc)
+#df: is the dataframe to conduct analysis
+#h: step of prediction (i.e. Predict 3 Months, 6 Months etc)
 hrlasso = function(wind,df,h){
   test = df[(wind+h):nrow(df),]
   len = nrow(df) - wind - h + 1
@@ -151,4 +219,6 @@ hrlasso = function(wind,df,h){
   # rlassodf = data.frame(Date = as.yearmon(df[['Date']][(wind+1):nrow(df)]),pred = predslasso,val = y[wind+1:nrow(df)])
   return(predslasso)
 }
+
+
 
